@@ -2,7 +2,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 const languagesAvailable = ['en', 'ro'];
 const language = localStorage.getItem('language');
 
-const checkActualLanguage = () => {
+const isLanguageSetExisting = () => {
     if (language) {
         return languagesAvailable.includes(JSON.parse(language));
     }
@@ -15,7 +15,7 @@ type InitialState = {
 }
 
 const initialState: InitialState = {
-    language:  checkActualLanguage() ? JSON.parse(language!) : 'en'
+    language:  isLanguageSetExisting() ? JSON.parse(language!) : 'en',
 }
 
 const languageSlice = createSlice({
