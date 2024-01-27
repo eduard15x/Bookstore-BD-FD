@@ -13,6 +13,7 @@ import { AdminDashboard } from "./components/admin/AdminDashboard";
 import { AdminProducts } from "./components/admin/AdminProducts";
 import { AdminUsers } from "./components/admin/AdminUsers";
 import { AdminOrders } from "./components/admin/AdminOrders";
+import { AdminSettings } from "./components/admin/AdminSettings";
 
 export enum Routes {
   Admin = "/admin", // TODO user list, user orders, order details, CRUD operations for books
@@ -72,7 +73,7 @@ export const router = createBrowserRouter([
     element: <AdminPage />,
     children: [
       {
-        path: "/admin/dashboard",
+        path: "/admin",
         // element: <TestComponentLoader />,
         element: <AdminDashboard />,
         loader: ({ params, request }) => {
@@ -107,6 +108,10 @@ export const router = createBrowserRouter([
       {
         path: "/admin/users",
         element: <AdminUsers />,
+      },
+      {
+        path: "/admin/settings",
+        element: <AdminSettings />,
       },
     ],
   },
