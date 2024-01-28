@@ -3,15 +3,21 @@ package com.school.bookstore.services.implementations;
 import com.school.bookstore.exceptions.book.BookCreateException;
 import com.school.bookstore.exceptions.book.BookDeleteException;
 import com.school.bookstore.exceptions.book.BookNotFoundException;
+import com.school.bookstore.exceptions.book.InvalidLanguageException;
+import com.school.bookstore.models.dtos.AuthorDTO;
 import com.school.bookstore.models.dtos.BookDTO;
 import com.school.bookstore.models.entities.Author;
 import com.school.bookstore.models.entities.Book;
 import com.school.bookstore.models.entities.GenreTag;
 import com.school.bookstore.models.enums.Language;
 import com.school.bookstore.repositories.BookRepository;
-import com.school.bookstore.services.interfaces.*;
+import com.school.bookstore.services.interfaces.AuthorService;
+import com.school.bookstore.services.interfaces.GenreTagService;
+import com.school.bookstore.services.interfaces.ImageStorageService;
+import com.school.bookstore.services.interfaces.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,16 +28,17 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class BookService implements com.school.bookstore.services.interfaces.BookService {
+public class BookServiceImpl implements com.school.bookstore.services.interfaces.BookService {
 
-    public static final String DEFAULT_IMAGE_LINK = "https://dkckcusqogzbwetnizwe.supabase.co" +
-            "/storage/v1/object/public/books/default-book-cover.jpg";
-    private static final String BOOK_NOT_FOUND_MESSAGE = "Database doesn't contain any book with id %s.";
+
     private final BookRepository bookRepository;
     private final AuthorService authorService;
     private final GenreTagService genreTagService;
     private final OrderService orderService;
-    private final ImageUploadService imageUploadService;
+    private final ImageStorageService imageStorageService;
+    @Value("${default.image}")
+    private String DEFAULT_IMAGE_LINK;
+    private String BOOK_NOT_FOUND_MESSAGE = "Database doesn't contain any book with id %s.";
 
     @Override
     public BookDTO createBook(BookDTO bookDTO) {
@@ -51,16 +58,23 @@ public class BookService implements com.school.bookstore.services.interfaces.Boo
 
     @Override
     public List<BookDTO> getBooks(String searchString, String genre, String language) {
-        Language lang;
-        try {
-            lang = Language.valueOf(language.toUpperCase());
-        } catch (NullPointerException | IllegalArgumentException exception) {
-            lang = null;
-        }
+        Language lang = getLanguage(language).orElse(null);
         return bookRepository.findBooksByTitleOrAuthorNameAndGenreAndLanguage(searchString, genre, lang)
                 .stream()
                 .map(this::convertToBookDTO)
                 .toList();
+    }
+
+    private Optional<Language> getLanguage(String inputString) {
+        Language language = null;
+        if (inputString != null) {
+            try {
+                language = Language.valueOf(inputString.toUpperCase());
+            } catch (IllegalArgumentException exception) {
+                throw new InvalidLanguageException("Invalid argument for language");
+            }
+        }
+        return Optional.ofNullable(language);
     }
 
     @Override
@@ -100,9 +114,11 @@ public class BookService implements com.school.bookstore.services.interfaces.Boo
         Set<GenreTag> genreTags = book.getGenreTagSet();
 
         bookRepository.delete(book);
-
         deleteAuthorsIfOrphan(authors);
         deleteGenreTagsIfOrphan(genreTags);
+        if (!book.getImageLink().equals(DEFAULT_IMAGE_LINK)) {
+            imageStorageService.deleteImageByBookId(book.getId());
+        }
     }
 
     @Override
@@ -112,9 +128,9 @@ public class BookService implements com.school.bookstore.services.interfaces.Boo
 
         String imageLink;
         if (book.getImageLink().equals(DEFAULT_IMAGE_LINK)) {
-            imageLink = imageUploadService.uploadImage(file, bookId.toString());
+            imageLink = imageStorageService.uploadImage(file, bookId.toString());
         } else {
-            imageLink = imageUploadService.updateImage(file, bookId.toString());
+            imageLink = imageStorageService.updateImage(file, bookId.toString());
         }
         book.setImageLink(imageLink);
         Book updatedBook = bookRepository.save(book);
@@ -123,7 +139,7 @@ public class BookService implements com.school.bookstore.services.interfaces.Boo
     }
 
     private Book convertToBookEntity(BookDTO bookDTO) {
-        Set<Author> authors = getAuthors(bookDTO.getAuthorNameList());
+        Set<Author> authors = getAuthors(bookDTO.getAuthorDTOS().stream().map(AuthorDTO::getFullName).toList());
         Set<GenreTag> genreTagSet = getGenreTags(bookDTO.getGenreTagList());
 
         return Book.builder()
@@ -145,7 +161,7 @@ public class BookService implements com.school.bookstore.services.interfaces.Boo
         return BookDTO.builder()
                 .id(book.getId())
                 .title(book.getTitle())
-                .authorNameList(book.getAuthors().stream().map(Author::getFullName).toList())
+                .authorDTOS(book.getAuthors().stream().map(author -> authorService.getAuthorById(author.getId())).toList())
                 .genreTagList(book.getGenreTagSet().stream().map(GenreTag::getGenre).toList())
                 .publisher(book.getPublisher())
                 .yearPublished(book.getYearPublished())
