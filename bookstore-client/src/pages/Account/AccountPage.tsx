@@ -1,7 +1,5 @@
-const AccountPage = () => {
+export const AccountPage: React.FC = () => {
   return (
     <div>AccountPage</div>
   )
-}
-
-export default AccountPage
+};

@@ -1,7 +1,5 @@
-const CheckoutPage = () => {
+export const CheckoutPage: React.FC = () => {
   return (
     <div>CheckoutPage</div>
   )
 }
-
-export default CheckoutPage
