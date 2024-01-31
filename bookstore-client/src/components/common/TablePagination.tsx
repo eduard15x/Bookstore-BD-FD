@@ -42,7 +42,7 @@ export const TablePagination = ({
         Showing <strong>{startIndex + 1}</strong> - <strong>{endIndex < dataLength ? endIndex : dataLength}</strong> of <strong>{dataLength}</strong> results
       </p>
       <button
-        disabled={currentPage === totalPagesBasedOnData}
+        disabled={currentPage >= totalPagesBasedOnData}
         onClick={showNextPage}
         className="w-[60px] border-none rounded-md py-0.5 px-2.5 bg-[#90afca] text-white font-semibold hover:brightness-110 disabled:brightness-100 disabled:opacity-40"
       >

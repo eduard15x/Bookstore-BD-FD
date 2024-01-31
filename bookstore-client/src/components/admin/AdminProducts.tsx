@@ -76,6 +76,24 @@ const COLUMNS = [
   //   Cell: ({ value }) => format(new Date(value, 'dd/MM/yyyy'))  ------------>>>> npm install date-fns / import {format} from 'date-fns
   // },
 ];
+const SORTING = [
+  {
+    opt: 'a-z',
+    name: 'Alphabetical A-Z',
+  },
+  {
+    opt: 'z-a',
+    name: 'Alphabetical Z-A',
+  },
+  {
+    opt: 'price-asc',
+    name: 'Price Ascending',
+  },
+  {
+    opt: 'price-desc',
+    name: 'Price Descending',
+  }
+];
 
 export const AdminProducts: React.FC = () => {
   const columns = useMemo(() => COLUMNS, []); // cache and ensure data is not recreated for every rerender
@@ -85,38 +103,114 @@ export const AdminProducts: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const startIndex = (currentPage - 1) * itemsOnPage;
   const endIndex = currentPage * itemsOnPage;
-  const [currentItemsArr, setCurrentItemsArr] = useState(data.slice(startIndex,endIndex));
+  const [initialArr, setInitialArr] = useState(data);
+
+  const [currentItemsArr, setCurrentItemsArr] = useState(initialArr.slice(startIndex,endIndex));
+
+  // search input
+  const [searchVal, setSearchVal] = useState<string>("");
+  const handleSearch = () => {
+    setInitialArr(data.filter(product => product.title.toLowerCase().includes(searchVal)));
+    setSelectedOption("default");
+  }
+
+  const handleResetSearch = () => {
+    setSearchVal("");
+    setInitialArr(data);
+    setSelectedOption("default");
+  }
+
+  // select dropdown
+  const [selectedOption, setSelectedOption] = useState<string>("default");
+  const handleSorting = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.preventDefault();
+
+    switch(e.target.value) {
+      case "a-z": {
+        const sortedData = [...initialArr];
+        sortedData.sort((a, b) => a.title.localeCompare(b.title));
+        setInitialArr(sortedData);
+        setSelectedOption("a-z");
+      }
+      break;
+
+      case "z-a": {
+        const sortedData = [...initialArr];
+        sortedData.sort((a, b) => b.title.localeCompare(a.title));
+        setInitialArr(sortedData);
+        setSelectedOption("z-a");
+      }
+      break;
+
+      case "price-asc": {
+        const sortedData = [...initialArr];
+        sortedData.sort((a, b) => a.price_before_discount - b.price_before_discount);
+        setInitialArr(sortedData);
+        setSelectedOption("price-asc");
+      }
+      break;
+
+      case "price-desc": {
+        const sortedData = [...initialArr];
+        sortedData.sort((a, b) => b.price_before_discount - a.price_before_discount);
+        setInitialArr(sortedData);
+        setSelectedOption("price-desc");
+      }
+      break;
+      default: {
+        setSelectedOption("default");
+        setInitialArr(data);
+      }
+    }
+  }
 
   const handlePageChange = (currentPage: number) => {
     setCurrentPage(currentPage);
   };
 
   useEffect(() => {
-    setCurrentItemsArr(data.slice(startIndex,endIndex));
-  }, [currentPage])
+    setCurrentItemsArr(initialArr.slice(startIndex,endIndex));
+  }, [currentPage, initialArr])
 
   return (
     <div className="flex flex-col">
       <h1 className="font-bold text-2xl text-center">Products</h1>
 
-      <div className="flex py-2">
-        <input
-          type="text"
-          placeholder="Search book"
-          className="font-semibold pl-2.5 py-0.5 border-2 rounded-md border-[#90afca] placeholder:text-neutral-400 placeholder:focus:text-neutral-400 focus:outline-none"
-        />
-        <button
-          className="w-[70px] border-none rounded-md ml-2 mr-0.5 py-0.5 px-2.5 bg-[#90afca] text-white font-semibold hover:brightness-110 disabled:brightness-100 disabled:opacity-40"
-          onClick={() => console.log('search')}
-        >
-          Search
-        </button>
-        <button
-          className="w-[70px] border-none rounded-md py-0.5 px-2.5 bg-[#90afca] text-white font-semibold hover:brightness-110"
-          onClick={() => console.log('reset')}
-        >
-          Reset
-        </button>
+      <div className="flex flex-col py-2">
+        <div className="flex py-2">
+          <input
+            type="text"
+            placeholder="Search book"
+            value={searchVal}
+            className="font-semibold pl-2.5 py-0.5 border-2 rounded-md border-[#90afca] placeholder:text-neutral-400 placeholder:focus:text-neutral-400 focus:outline-none"
+            onChange={(e) => setSearchVal(e.target.value)}
+          />
+          <button
+            disabled={searchVal === ""}
+            className="w-[70px] border-none rounded-md ml-2 mr-0.5 py-0.5 px-2.5 bg-[#90afca] text-white font-semibold hover:brightness-110 disabled:brightness-100 disabled:opacity-40"
+            onClick={handleSearch}
+          >
+            Search
+          </button>
+          <button
+            disabled={searchVal === ""}
+            className="w-[70px] border-none rounded-md ml-2 mr-0.5 py-0.5 px-2.5 bg-[#90afca] text-white font-semibold hover:brightness-110 disabled:brightness-100 disabled:opacity-40"
+            onClick={handleResetSearch}
+          >
+            Reset
+          </button>
+        </div>
+        <div className="py-2 flex items-center">
+          <p className="text-lg font-semibold">Ordoneaza:</p>
+          <select value={selectedOption} onChange={handleSorting} className="py-1 ml-2 font-semibold pl-2.5  border-2 rounded-md focus:rounded-b-none border-[#90afca] placeholder:text-neutral-400 placeholder:focus:text-neutral-400 focus:outline-none">
+            <option value="default">Select an option</option>
+            {SORTING.map((opt) => (
+              <option key={opt.opt} value={opt.opt}>
+                {opt.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <table className="w-screen">
@@ -150,7 +244,7 @@ export const AdminProducts: React.FC = () => {
       </table>
 
       <TablePagination
-        dataLength={data.length}
+        dataLength={initialArr.length}
         itemsOnPage={itemsOnPage}
         startIndex={startIndex}
         endIndex={endIndex}
